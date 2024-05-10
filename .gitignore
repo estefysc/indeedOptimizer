@@ -1,0 +1,11 @@
+# Ignore .env file
+.env
+
+# Ignore all files in the scrapped_data directory
+scrapped_data/*
+
+# Ignore the virtual environment
+.venv/
+
+# Ignore Python byte-compile cache
+__pycache__/
