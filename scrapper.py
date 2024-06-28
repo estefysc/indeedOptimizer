@@ -96,28 +96,28 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
     create_report(new_keys, final_results_filename, report_filename)
     replace_old_jobkeys_file(new_keys, old_keys, old_jobkeys_filename)
 
-def check_for_new_jobs(job_keys: list, old_job_keys_file: str, new_job_keys_file: str):
-    new_job_keys = []
+def check_for_new_jobs(job_keys: set, old_job_keys_file: str, new_job_keys_file: str):
+    new_job_keys = set()
     with open(old_job_keys_file, "r") as file:
-        old_job_keys = json.load(file)
+        old_job_keys = set(json.load(file)) 
 
     for key in job_keys:
-        if key not in old_job_keys and key not in new_job_keys:
-            new_job_keys.append(key)
+        if key not in old_job_keys:
+            new_job_keys.add(key)
 
     with open(new_job_keys_file, "w") as file:
-        json.dump(new_job_keys, file)
+        json.dump(list(new_job_keys), file)
 
     return new_job_keys, old_job_keys
 
-def replace_old_jobkeys_file(newJobs_keys: list, oldJobs_keys: list, oldJobs_directory: str):
-    job_keys = oldJobs_keys + newJobs_keys
+def replace_old_jobkeys_file(newJobs_keys: set, oldJobs_keys: set, oldJobs_directory: str):
+    job_keys = oldJobs_keys.union(newJobs_keys)
     with open(oldJobs_directory, "w") as file:
-            json.dump(job_keys, file)
+            json.dump(list(job_keys), file)
 
-def create_report(new_job_keys: list, full_scrap_file: str, report_directory: str):
+def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
     report = []
-    job_characteristics = [
+    job_characteristics = {
         "applyCount",
         "company",
         "companyRating",
@@ -138,14 +138,23 @@ def create_report(new_job_keys: list, full_scrap_file: str, report_directory: st
         "taxonomyAttributes",
         "title",
         "urgentlyHiring"
-    ]
+    }
+
     with open(full_scrap_file, "r") as file:
         full_scrap = json.load(file)
 
     # From the full scrap, get the results marked by the new_job_keys
+    # for job_key, job_description in full_scrap.items():
+    #     if job_key in new_job_keys:
+    #         report.append({key: job_description.get(key, "Not provided") for key in job_characteristics})
+
     for job_key, job_description in full_scrap.items():
         if job_key in new_job_keys:
-            report.append({key: job_description.get(key, "Not provided") for key in job_characteristics})
+            job_report = {}
+            for key in job_characteristics:
+                if key in job_description:
+                    job_report[key] = job_description.get(key, "Not provided")
+            report.append(job_report)
     
     with open(report_directory, "w") as file:
         json.dump(report, file)
