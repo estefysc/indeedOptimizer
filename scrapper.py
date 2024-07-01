@@ -2,10 +2,12 @@ import json
 import os
 import re
 import time
+
 from typing import List
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
 from datetime import datetime
+from ordered_set import OrderedSet
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -117,7 +119,7 @@ def replace_old_jobkeys_file(newJobs_keys: set, oldJobs_keys: set, oldJobs_direc
 
 def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
     report = []
-    job_characteristics = {
+    job_characteristics = OrderedSet([
         "applyCount",
         "company",
         "companyRating",
@@ -138,7 +140,7 @@ def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str
         "taxonomyAttributes",
         "title",
         "urgentlyHiring"
-    }
+    ])
 
     with open(full_scrap_file, "r") as file:
         full_scrap = json.load(file)
