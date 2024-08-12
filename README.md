@@ -3,13 +3,12 @@
 ## Introduction
 
 ### Project Description
-The Indeed Search Optimizer is a Python-based tool designed to automate job searches on Indeed. scraping job postings based on specific queries and locations. It is particularly useful for gathering large sets of job data across various locations, which can then be analyzed or reported.
+The Indeed Search Optimizer is a Python-based tool designed to automate job searches on Indeed. It scraps job postings based on specific queries and locations. This tool only displays new job postings since your last search by storing job keys each time pages are scraped. As a result, only new job keys are reported. However, note that sometimes an old posting may be reposted with a new job key, causing the same job to appear again. This does not happen frequently.
 
 ### Features
 - **Automated Job Scraping**: Scrapes job listings from Indeed based on specified keywords, locations, and radius.
 - **Data Handling**: Collects and stores job data, allowing for comparison between new and old job postings.
 - **Reporting**: Generates reports highlighting only new job postings and key job characteristics.
-- **Concurrency**: Utilizes asynchronous programming to handle multiple pages of job results efficiently.
 
 ## Installation Instructions
 
