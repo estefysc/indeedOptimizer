@@ -6,7 +6,6 @@ import time
 from typing import List
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
-from datetime import datetime
 from ordered_set import OrderedSet
 from dotenv import load_dotenv
 
@@ -160,22 +159,3 @@ def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str
     
     with open(report_directory, "w") as file:
         json.dump(report, file)
-
-# this is the url of the actual job page https://www.indeed.com/viewjob?jk=01fa92a46c94fd1a
-#TODO: check if spam, check time creation of post, add filter not show certain company
-
-# base url for jobs?
-# https://www.google.com/search?client=firefox-b-1-d&q=software+sarasota&ibp=htl;jobs
-# 3 days ago
-# https://www.google.com/search?client=firefox-b-1-d&q=software+sarasota&ibp=htl;jobs&htichips=date_posted:3days&htischips=date_posted;3days
-# https://www.google.com/search?client=firefox-b-1-d&q=software+sarasota&ibp=htl;jobs&sa=X&ved=2ahUKEwi57ZDkuoOGAxXat4QIHeRRB50QutcGKAF6BAgiEAQ#fpstate=tldetail&htivrt=jobs&htichips=date_posted:3days&htischips=date_posted;3days&htilrad=321.868&htidocid=97HobkDIPziCaxHeAAAAAA%3D%3D
-
-async def scrape_google_jobs():
-
-    def make_page_url():
-        url = "https://www.google.com/search?client=firefox-b-1-d&q=software+sarasota&ibp=htl;jobs&htichips=date_posted:3days&htischips=date_posted;3days"
-        print(f"Scraping {url}")
-        return url
-    
-    result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_page_url(), asp=True))
-    print(result_first_page.content)
