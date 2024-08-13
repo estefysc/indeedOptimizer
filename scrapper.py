@@ -3,7 +3,6 @@ import os
 import re
 import time
 
-from typing import List
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
 from ordered_set import OrderedSet
