@@ -24,22 +24,21 @@ Before running the project, ensure you have the following installed in your WSL 
    Open your WSL terminal.
 
 2. **Clone the Repository**:  
-   Navigate to your working directory in WSL and clone the repository:  
-   git clone https://github.com/yourusername/indeed-search-optimizer.git  
-   cd indeed-search-optimizer
+   Clone the repo and cd the root folder:   
+   `cd indeed-search-optimizer`
 
 3. **Set Up the Virtual Environment**:  
     Set up a Python virtual environment to manage dependencies:  
-    python3 -m venv venv  
-    source venv/bin/activate
+    `python3 -m venv venv`  
+    `source venv/bin/activate`
 
 4. **Install Dependencies**:  
     Install the required Python packages using pip:  
-    pip install -r requirements.txt
+    `pip install -r requirements.txt`
 
 5. **Set Up Environment Variables**:  
     Create a .env file in the root directory of the project and add your Scrapfly API key:  
-    API_KEY=your_scrapfly_api_key
+    `API_KEY=your_scrapfly_api_key`
 
 ## Usage
 ### How to Use the Project
@@ -53,7 +52,7 @@ Execute the script either in your IDE or in your WSL terminal to start scraping.
 Scraped job data will be stored in the scrapped_data directory as JSON files. Reports on new job postings will also be generated in the same directory.
 
 ## Data Structure
-The JSON data you've scraped from Indeed contains a wealth of information about a job posting. Below is an explanation of some of the more notable keys you might find useful:
+The JSON data you scrape from Indeed contains a wealth of information about each job posting. Notably, the applyCount is a piece of information not available directly on the website. This data point can help you be more strategic when applying for jobs. Below is an explanation of some of the more notable keys you might find useful:
 
 - **adBlob**: A string likely containing encrypted or encoded data for internal tracking or state management.
 - **adId**: A unique identifier for the advertisement itself.
