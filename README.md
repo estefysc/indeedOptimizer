@@ -13,7 +13,6 @@ The Indeed Search Optimizer is a Python-based tool designed to automate job sear
 ## Installation Instructions
 
 ### Prerequisites
-Before running the project, ensure you have the following installed in your WSL environment:
 - Windows Subsystem for Linux (WSL) with a preferred Linux distribution (e.g., Ubuntu) 
 - Virtual environment (optional but recommended)
 - Python 3.7 or later
@@ -25,7 +24,7 @@ Before running the project, ensure you have the following installed in your WSL 
 
 2. **Clone the Repository**:  
    Clone the repo and cd the root folder:   
-   `cd indeed-search-optimizer`
+   `cd indeedOptimizer`
 
 3. **Set Up the Virtual Environment**:  
     Set up a Python virtual environment to manage dependencies:  
