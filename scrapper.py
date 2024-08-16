@@ -1,7 +1,9 @@
-import json
 import os
+import json
 import re
+import asyncio
 import time
+import logging
 
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
@@ -11,6 +13,22 @@ from dotenv import load_dotenv
 load_dotenv()
 api_key = os.getenv('API_KEY')
 scrapfly = ScrapflyClient(key=api_key)
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
+def make_page_url(query, location, radius, offset):
+    parameters = {"q": query, "l": location, "radius": radius, "filter": 0, "start": offset}
+    url = "https://www.indeed.com/jobs?" + urlencode(parameters)
+    logger.info(f"Scraping {url}")
+    return url
+
+def add_job_keys(parsed_results, job_keys, results):
+    for result in parsed_results["results"]:
+        job_key = result["jobkey"]
+        if job_key not in job_keys:
+            job_keys.add(job_key)
+            results[job_key] = result
 
 def parse_search_page(html: str):
     # This type of data is commonly known as hidden web data. 
@@ -28,92 +46,83 @@ def parse_search_page(html: str):
 async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000):
     job_keys = set()
     results = {}
-    def make_page_url(offset):
-        # parameters = {"q": query, "l": location, "filter": 0, "start": offset}
-        parameters = {"q": query, "l": location, "radius": radius, "filter": 0, "start": offset}
-        url = "https://www.indeed.com/jobs?" + urlencode(parameters)
-        print(f"Scraping {url}")
-        return url
     
     directory = "scrapped_data"
+    os.makedirs(directory, exist_ok=True)
     final_results_filename = f"{directory}/{query}_{location}_final_results.json"
     old_jobkeys_filename = f"{directory}/{location}_jobkeys_old.json"
     report_filename = f"{directory}/{query}_{location}_report.json"
     new_jobkeys_filename = f"{directory}/{query}_{location}_new_keys.json"
 
-    print(f"scraping first page of search: {query=}, {location=}")
-    # ASP = Anti Scraping Protection
-    result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_page_url(0), asp=True))
-    data_first_page = parse_search_page(result_first_page.content)
-    for result in data_first_page["results"]:
-        job_key = result["jobkey"]
-        if job_key not in job_keys:
-            job_keys.add(job_key)
-            results[job_key] = result  
+    logger.info(f"Scraping first page of search: query={query}, location={location}")
+    try:
+        result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_page_url(query, location, radius, 0), asp=True))
+        data_first_page = parse_search_page(result_first_page.content)
+        add_job_keys(data_first_page, job_keys, results)
 
-    total_results = sum(category["jobCount"] for category in data_first_page["meta"])
-    print (f"total results before conversion: {total_results}")
+        total_results = sum(category["jobCount"] for category in data_first_page["meta"])
+        logger.info(f"Total results: {total_results}")
 
-    # there's a page limit on indeed.com of 1000 results per search
-    if total_results > max_results:
-        total_results = max_results
+        # there's a page limit on indeed.com of 1000 results per search
+        if total_results > max_results:
+            total_results = max_results
+            
+        # Adding 9 is a mathematical trick used to ensure that when you divide by 10, 
+        # you effectively perform a ceiling division without needing to import additional functions or libraries. 
+        # This addition makes sure that any remainder from the division (any number of results less than a full page) still 
+        # counts as requiring an additional page. // = flooring operation
+        number_of_pages = (total_results + 9) // 10
+        logger.info(f"Total number of pages: {number_of_pages}. Scrapping now...")
         
-    # Adding 9 is a mathematical trick used to ensure that when you divide by 10, 
-    # you effectively perform a ceiling division without needing to import additional functions or libraries. 
-    # This addition makes sure that any remainder from the division (any number of results less than a full page) still 
-    # counts as requiring an additional page. // = flooring operation
-    number_of_pages = (total_results + 9) // 10
-    print(f"Total number of pages: {number_of_pages}")
-    print(f"scraping remaining {number_of_pages - 1} pages")
-    
-    other_pages = [
-        ScrapeConfig(make_page_url(offset), asp=True)
-        for offset in range(10, min(total_results, max_results), 10)
-        # for offset in range(10, 20, 10)
-    ]
-    print(f"The size of other_pages is {len(other_pages)}")
+        other_pages = [
+            ScrapeConfig(make_page_url(query, location, radius, offset), asp=True)
+            for offset in range(10, min(total_results, max_results), 10)
+        ]
 
-    # For the highest precision, especially useful in measuring very short durations and benchmarking, use time.perf_counter()
-    start_time = time.perf_counter()
-    # TODO: add try block
-    async for result in scrapfly.concurrent_scrape(other_pages):
-        other_pages_results = parse_search_page(result.content)
-        for result in other_pages_results["results"]:
-            job_key = result["jobkey"]
-            if job_key not in job_keys:
-                job_keys.add(job_key)
-                results[job_key] = result  
+        # For the highest precision, especially useful in measuring very short durations and benchmarking, use time.perf_counter()
+        start_time = time.perf_counter()
 
-    with open(final_results_filename, "w") as file:
-        json.dump(results, file)
+        tasks = []
+        for config in other_pages:
+            task = scrapfly.async_scrape(config)
+            tasks.append(task)
+        other_pages_results = await asyncio.gather(*tasks)
 
-    print(f"The final length of job_keys is {len(job_keys)}")
-    print(job_keys)
-    end_time = time.perf_counter()
-    duration = end_time - start_time
-    print(f"Complete parsing took: {duration} seconds")
-    new_keys, old_keys = check_for_new_jobs(job_keys, old_jobkeys_filename, new_jobkeys_filename)
-    create_report(new_keys, final_results_filename, report_filename)
-    replace_old_jobkeys_file(new_keys, old_keys, old_jobkeys_filename)
+        for result in other_pages_results:
+            parsed_results = parse_search_page(result.content)
+            add_job_keys(parsed_results, job_keys, results)
+
+        with open(final_results_filename, "w") as file:
+            json.dump(results, file)
+        
+        end_time = time.perf_counter()
+        duration = end_time - start_time
+        logger.info(f"Complete parsing took: {duration} seconds")
+        
+        new_keys = check_for_new_jobs(job_keys, old_jobkeys_filename, new_jobkeys_filename)
+        create_report(new_keys, final_results_filename, report_filename)
+    except Exception as e:
+        logger.error(f"An error occurred during scraping: {e}")
 
 def check_for_new_jobs(job_keys: set, old_job_keys_file: str, new_job_keys_file: str):
     new_job_keys = set()
-    with open(old_job_keys_file, "r") as file:
-        old_job_keys = set(json.load(file)) 
+    old_job_keys = set()
 
-    for key in job_keys:
-        if key not in old_job_keys:
-            new_job_keys.add(key)
+    if os.path.exists(old_job_keys_file):
+        with open(old_job_keys_file, "r") as file:
+            old_job_keys = set(json.load(file))
+
+    new_job_keys = job_keys - old_job_keys
+
+    old_job_keys.update(new_job_keys)
+
+    with open(old_job_keys_file, "w") as file:
+        json.dump(list(old_job_keys), file)
 
     with open(new_job_keys_file, "w") as file:
         json.dump(list(new_job_keys), file)
 
-    return new_job_keys, old_job_keys
-
-def replace_old_jobkeys_file(newJobs_keys: set, oldJobs_keys: set, oldJobs_directory: str):
-    job_keys = oldJobs_keys.union(newJobs_keys)
-    with open(oldJobs_directory, "w") as file:
-            json.dump(list(job_keys), file)
+    return new_job_keys
 
 def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
     report = []
@@ -142,11 +151,6 @@ def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str
 
     with open(full_scrap_file, "r") as file:
         full_scrap = json.load(file)
-
-    # From the full scrap, get the results marked by the new_job_keys
-    # for job_key, job_description in full_scrap.items():
-    #     if job_key in new_job_keys:
-    #         report.append({key: job_description.get(key, "Not provided") for key in job_characteristics})
 
     for job_key, job_description in full_scrap.items():
         if job_key in new_job_keys:
