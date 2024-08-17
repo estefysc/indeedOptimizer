@@ -43,6 +43,7 @@ def parse_search_page(html: str):
         "meta": data["metaData"]["mosaicProviderJobCardsModel"]["tierSummaries"],
     }
 
+#TODO - Fix 429 error
 async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000):
     job_keys = set()
     results = {}
