@@ -4,6 +4,7 @@ import re
 import asyncio
 import time
 import logging
+import aiometer
 
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
@@ -43,6 +44,27 @@ def parse_search_page(html: str):
         "meta": data["metaData"]["mosaicProviderJobCardsModel"]["tierSummaries"],
     }
 
+# async def scrape_with_backoff(config, max_retries=3, initial_delay=5):
+#     for attempt in range(max_retries):
+#         try:
+#             result = await scrapfly.async_scrape(config)
+#             if result.status_code == 200:
+#                 return result
+#             elif result.status_code == 429:
+#                 retry_after = int(result.headers.get('Retry-After', initial_delay))
+#                 logger.warning(f"Rate limited. Retrying after {retry_after} seconds.")
+#                 await asyncio.sleep(retry_after)
+#             else:
+#                 raise Exception(f"Unexpected status code: {result.status_code}")
+#         except Exception as e:
+#             logger.error(f"Attempt {attempt + 1} failed: {str(e)}")
+#             if attempt < max_retries - 1:
+#                 delay = initial_delay * (2 ** attempt)  # Exponential backoff
+#                 logger.info(f"Retrying in {delay} seconds...")
+#                 await asyncio.sleep(delay)
+    
+    raise Exception("Max retries reached. Scraping failed.")
+
 #TODO - Fix 429 error
 async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000):
     job_keys = set()
@@ -57,6 +79,7 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
 
     logger.info(f"Scraping first page of search: query={query}, location={location}")
     try:
+        # result_first_page = await scrape_with_backoff(ScrapeConfig(make_page_url(query, location, radius, 0), asp=True))
         result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_page_url(query, location, radius, 0), asp=True))
         data_first_page = parse_search_page(result_first_page.content)
         add_job_keys(data_first_page, job_keys, results)
@@ -82,16 +105,38 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
 
         # For the highest precision, especially useful in measuring very short durations and benchmarking, use time.perf_counter()
         start_time = time.perf_counter()
+        
+        # Tried to fix 429 - did not work
+        # async def scrape_page(config):
+        #     result = await scrape_with_backoff(config)
+        #     parsed_results = parse_search_page(result.content)
+        #     add_job_keys(parsed_results, job_keys, results)
+        #     await asyncio.sleep(1)
 
-        tasks = []
-        for config in other_pages:
-            task = scrapfly.async_scrape(config)
-            tasks.append(task)
-        other_pages_results = await asyncio.gather(*tasks)
+        # old code that used to work with no error 
+        # async for result in scrapfly.concurrent_scrape(other_pages):
+        #     other_pages_results = parse_search_page(result.content)
+        #     for result in other_pages_results["results"]:
+        #         job_key = result["jobkey"]
+        #         if job_key not in job_keys:
+        #             job_keys.add(job_key)
+        #             results[job_key] = result  
 
-        for result in other_pages_results:
+        # mix of old code above plus refactored code below using function
+        async for result in scrapfly.concurrent_scrape(other_pages):
             parsed_results = parse_search_page(result.content)
             add_job_keys(parsed_results, job_keys, results)
+
+        # This code is causing the 429 issue?
+        # tasks = []
+        # for config in other_pages:   
+        #     # task = scrape_page(config)         
+        #     task = scrapfly.async_scrape(config)
+        #     tasks.append(task)
+        # other_pages_results = await asyncio.gather(*tasks)
+        # for result in other_pages_results:
+        #     parsed_results = parse_search_page(result.content)
+        #     add_job_keys(parsed_results, job_keys, results)
 
         with open(final_results_filename, "w") as file:
             json.dump(results, file)
