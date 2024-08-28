@@ -28,7 +28,7 @@ The Indeed Search Optimizer is a Python-based tool designed to automate job sear
 3. **Set Up the Virtual Environment**:  
     Set up a Python virtual environment to manage dependencies:  
     `python3 -m venv .venv`  
-    `source venv/bin/activate`
+    `source .venv/bin/activate`
 
 4. **Install Dependencies**:  
     Install the required Python packages using pip:  
