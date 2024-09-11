@@ -16,9 +16,22 @@ scrapfly = ScrapflyClient(key=api_key)
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-def make_page_url(query, location, radius, offset):
-    parameters = {"q": query, "l": location, "radius": radius, "filter": 0, "start": offset}
+def make_request_url(query, location, radius=None, from_param=None, offset=None):
+    # The first request to the Indeed search page only requires the query, location, and from parameter
+
+    # Base parameters
+    parameters = {"q": query, "l": location}
+    
+    # Add either `from` (for the first request) or `radius` and `start` (for paginated requests)
+    if from_param is not None:
+        parameters["from"] = from_param
+    if radius is not None:
+        parameters["radius"] = radius
+    if offset is not None:
+        parameters["start"] = offset
+    
     url = "https://www.indeed.com/jobs?" + urlencode(parameters)
+    
     logger.info(f"Scraping {url}")
     return url
 
@@ -55,7 +68,14 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
 
     logger.info(f"Scraping first page of search: query={query}, location={location}")
     try:
-        result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_page_url(query, location, radius, 0), asp=True))
+        
+        from_param = "searchOnDesktopSerp"
+        result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_request_url(
+                                                        query, 
+                                                        location, 
+                                                        from_param),                                                         
+                                                        asp=True))
+
         data_first_page = parse_search_page(result_first_page.content)
         add_job_keys(data_first_page, job_keys, results)
 
@@ -79,7 +99,7 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
         #     other_pages.append(config)
         # The list comprehension below is equivalent to the code above
         other_pages = [
-            ScrapeConfig(make_page_url(query, location, radius, offset), asp=True)
+            ScrapeConfig(make_request_url(query, location, radius, offset), asp=True)
             for offset in range(10, min(total_results, max_results), 10)
         ]
 
