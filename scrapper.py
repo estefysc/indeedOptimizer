@@ -8,12 +8,13 @@ from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
 from ordered_set import OrderedSet
 from dotenv import load_dotenv
+from logging_config import app_logger
 
 load_dotenv()
 api_key = os.getenv('API_KEY')
 scrapfly = ScrapflyClient(key=api_key)
 
-logger = logging.getLogger(__name__)
+logger = app_logger.getChild('scraper')
 logging.basicConfig(level=logging.INFO)
 
 def make_request_url(query, location, radius=None, from_param=None, offset=None):
