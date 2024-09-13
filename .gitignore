@@ -7,5 +7,8 @@ scrapped_data/*
 # Ignore the virtual environment
 .venv/
 
+# Ignore the logs directory
+logs/
+
 # Ignore Python byte-compile cache
 __pycache__/
