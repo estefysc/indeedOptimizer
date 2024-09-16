@@ -100,11 +100,12 @@ def set_jobs_as_viewed(location, job_type):
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 1)
 
+def check_if_jobs_viewed(location, job_type):
+    return bool(get_state("jobs_viewed", job_type, location))
+
 def should_scrape(location, job_type, interval_seconds):
     last_scrape = get_state("last_scrape", job_type, location)
     if not last_scrape:
         return True
     return (int(time.time()) - int(last_scrape)) >= interval_seconds
 
-def check_if_jobs_viewed(location, job_type):
-    return bool(get_state("jobs_viewed", job_type, location))
