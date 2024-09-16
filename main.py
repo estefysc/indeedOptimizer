@@ -1,9 +1,4 @@
-from scrapper import scrape_search
-import asyncio
+from scheduler import start_scheduler
 
-async def main():
-    await scrape_search(query=" ", location=" ", radius=30)
-
-
-# Use asyncio.run() here to start the event loop and run 'main'
-asyncio.run(main())
+if __name__ == "__main__":
+    start_scheduler()

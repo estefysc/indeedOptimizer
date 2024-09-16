@@ -104,8 +104,13 @@ def set_jobs_as_not_viewed(location, job_type):
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 0)
 
-def check_if_jobs_viewed(location, job_type):
-    return bool(get_state("jobs_viewed", job_type, location))
+def should_scrape_by_jobs_state(location, job_type):
+    state = get_state("jobs_viewed", job_type, location)
+    # None = no scrap history
+    # 1 = jobs viewed
+    # 0 = jobs not viewed
+    # Return True if state is None or 1, False otherwise
+    return state is None or state == '1'
 
 def should_scrape_by_time(location, job_type, interval_seconds):
     last_scrape = get_state("last_scrape", job_type, location)

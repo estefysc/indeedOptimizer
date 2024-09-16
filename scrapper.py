@@ -28,7 +28,7 @@ scrapfly = ScrapflyClient(key=api_key)
 logger = app_logger.getChild('scraper')
 logging.basicConfig(level=logging.INFO)
 
-async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000):
+async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000) -> bool:
     config = ScrappingJobConfig(query, location, radius, max_results)
     job_keys = set()
     results = {}
@@ -58,7 +58,10 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
         logger.info(f"New Jobs: {len(new_keys)}")
 
         create_report(new_keys, config)
-        # return some sort of indicator for new jobs
+
+        new_jobs_found = len(new_keys) > 0
+        return new_jobs_found
+    
     except Exception as e:
         logger.error(f"An error occurred during scraping: {e}")
 
