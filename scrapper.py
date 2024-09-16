@@ -3,6 +3,8 @@ import json
 import re
 import time
 import logging
+from dataclasses import dataclass
+from typing import Dict, List, Set
 
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
@@ -10,12 +12,96 @@ from ordered_set import OrderedSet
 from dotenv import load_dotenv
 from logging_config import app_logger
 
+@dataclass
+class ScrappingJobConfig:
+    query: str
+    location: str
+    radius: int
+    # there's a page limit on indeed.com of 1000 results per search
+    max_results: int = 1000
+    directory: str = "scrapped_data"
+
 load_dotenv()
 api_key = os.getenv('API_KEY')
 scrapfly = ScrapflyClient(key=api_key)
 
 logger = app_logger.getChild('scraper')
 logging.basicConfig(level=logging.INFO)
+
+async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000):
+    config = ScrappingJobConfig(query, location, radius, max_results)
+    job_keys = set()
+    results = {}
+
+    try:
+        os.makedirs(config.directory, exist_ok=True)
+
+        logger.info(f"Scraping first page of search: query={query}, location={location}")
+        data_first_page = await scrape_first_page(config)
+        add_job_keys(data_first_page, job_keys, results)
+
+        total_results = calculate_total_results(data_first_page, config.max_results)
+        logger.info(f"Total results: {total_results}")
+
+        number_of_pages = calculate_number_of_pages(total_results)
+        logger.info(f"Total number of pages: {number_of_pages}. Scrapping now...")
+        
+        # For the highest precision, especially useful in measuring very short durations and benchmarking, use time.perf_counter()
+        start_time = time.perf_counter()
+        await scrape_remaining_pages(config, total_results, job_keys, results)
+        save_results(results, config)    
+        end_time = time.perf_counter()
+        duration = end_time - start_time
+        logger.info(f"Complete parsing took: {duration} seconds")
+        
+        new_keys = check_for_new_jobs(job_keys, config)
+        logger.info(f"New Jobs: {len(new_keys)}")
+
+        create_report(new_keys, config)
+        # return some sort of indicator for new jobs
+    except Exception as e:
+        logger.error(f"An error occurred during scraping: {e}")
+
+async def scrape_first_page(config: ScrappingJobConfig) -> Dict:
+    url = make_request_url(config.query, config.location, from_param="searchOnDesktopSerp")
+    result = await scrapfly.async_scrape(ScrapeConfig(url, asp=True))
+    return parse_search_page(result.content)
+
+async def scrape_remaining_pages(config: ScrappingJobConfig, total_results: int, job_keys: Set[str], results: Dict):
+    other_pages = generate_other_pages(config, total_results)
+    # The concurrent_scrape() method in the Scrapfly Python SDK automatically manages concurrency up to the Scrapfly
+    # account's concurrency limit.
+    async for result in scrapfly.concurrent_scrape(other_pages):
+        parsed_results = parse_search_page(result.content)
+        add_job_keys(parsed_results, job_keys, results)
+
+def calculate_total_results(data: Dict, max_results: int) -> int:
+    total_results = sum(category["jobCount"] for category in data["meta"])
+    return min(total_results, max_results)
+
+def calculate_number_of_pages(total_results: int) -> int:
+    # Adding 9 is a mathematical trick used to ensure that when you divide by 10, 
+    # you effectively perform a ceiling division without needing to import additional functions or libraries. 
+    # This addition makes sure that any remainder from the division (any number of results less than a full page) still 
+    # counts as requiring an additional page. // = flooring operation
+    number_of_pages = (total_results + 9) // 10
+    return number_of_pages
+
+def generate_other_pages(config: ScrappingJobConfig, total_results: int) -> List[ScrapeConfig]:
+    # for offset in range(10, min(total_results, max_results), 10):
+    #     url = make_page_url(query, location, radius, offset)
+    #     config = ScrapeConfig(url, asp=True)
+    #     other_pages.append(config)
+    # The list comprehension below is equivalent to the code above
+    return [
+        ScrapeConfig(make_request_url(config.query, config.location, config.radius, offset=offset), asp=True)
+        for offset in range(10, min(total_results, config.max_results), 10)
+    ]
+
+def save_results(results: Dict, config: ScrappingJobConfig):
+    filename = f"{config.directory}/{config.query}_{config.location}_final_results.json"
+    with open(filename, "w") as file:
+        json.dump(results, file)
 
 def make_request_url(query, location, radius=None, from_param=None, offset=None):
     # The first request to the Indeed search page only requires the query, location, and from parameter
@@ -36,7 +122,8 @@ def make_request_url(query, location, radius=None, from_param=None, offset=None)
     logger.info(f"Scraping {url}")
     return url
 
-def add_job_keys(parsed_results, job_keys, results):
+# def add_job_keys(parsed_results, job_keys, results):
+def add_job_keys(parsed_results: Dict, job_keys: Set[str], results: Dict):
     for result in parsed_results["results"]:
         job_key = result["jobkey"]
         if job_key not in job_keys:
@@ -56,97 +143,33 @@ def parse_search_page(html: str):
         "meta": data["metaData"]["mosaicProviderJobCardsModel"]["tierSummaries"],
     }
 
-async def scrape_search(query: str, location: str, radius: int, max_results: int = 1000):
-    job_keys = set()
-    results = {}
+# def check_for_new_jobs(job_keys: set, old_job_keys_file: str, new_job_keys_file: str):
+def check_for_new_jobs(job_keys: Set[str], config: ScrappingJobConfig) -> Set[str]:
+    old_jobkeys_filename = f"{config.directory}/{config.location}_jobkeys_old.json"
+    new_jobkeys_filename = f"{config.directory}/{config.query}_{config.location}_new_keys.json"
     
-    directory = "scrapped_data"
-    os.makedirs(directory, exist_ok=True)
-    final_results_filename = f"{directory}/{query}_{location}_final_results.json"
-    old_jobkeys_filename = f"{directory}/{location}_jobkeys_old.json"
-    report_filename = f"{directory}/{query}_{location}_report.json"
-    new_jobkeys_filename = f"{directory}/{query}_{location}_new_keys.json"
-
-    logger.info(f"Scraping first page of search: query={query}, location={location}")
-    try:
-        
-        from_param = "searchOnDesktopSerp"
-        result_first_page = await scrapfly.async_scrape(ScrapeConfig(make_request_url(
-                                                        query, 
-                                                        location, 
-                                                        from_param),                                                         
-                                                        asp=True))
-
-        data_first_page = parse_search_page(result_first_page.content)
-        add_job_keys(data_first_page, job_keys, results)
-
-        total_results = sum(category["jobCount"] for category in data_first_page["meta"])
-        logger.info(f"Total results: {total_results}")
-
-        # there's a page limit on indeed.com of 1000 results per search
-        if total_results > max_results:
-            total_results = max_results
-            
-        # Adding 9 is a mathematical trick used to ensure that when you divide by 10, 
-        # you effectively perform a ceiling division without needing to import additional functions or libraries. 
-        # This addition makes sure that any remainder from the division (any number of results less than a full page) still 
-        # counts as requiring an additional page. // = flooring operation
-        number_of_pages = (total_results + 9) // 10
-        logger.info(f"Total number of pages: {number_of_pages}. Scrapping now...")
-        
-        # for offset in range(10, min(total_results, max_results), 10):
-        #     url = make_page_url(query, location, radius, offset)
-        #     config = ScrapeConfig(url, asp=True)
-        #     other_pages.append(config)
-        # The list comprehension below is equivalent to the code above
-        other_pages = [
-            ScrapeConfig(make_request_url(query, location, radius, offset), asp=True)
-            for offset in range(10, min(total_results, max_results), 10)
-        ]
-
-        # For the highest precision, especially useful in measuring very short durations and benchmarking, use time.perf_counter()
-        start_time = time.perf_counter()
-
-        # The concurrent_scrape() method in the Scrapfly Python SDK automatically manages concurrency up to the Scrapfly
-        # account's concurrency limit.
-        async for result in scrapfly.concurrent_scrape(other_pages):
-            parsed_results = parse_search_page(result.content)
-            add_job_keys(parsed_results, job_keys, results)
-
-        with open(final_results_filename, "w") as file:
-            json.dump(results, file)
-        
-        end_time = time.perf_counter()
-        duration = end_time - start_time
-        logger.info(f"Complete parsing took: {duration} seconds")
-        
-        new_keys = check_for_new_jobs(job_keys, old_jobkeys_filename, new_jobkeys_filename)
-        logger.info(f"New Jobs: {len(new_keys)}")
-
-        create_report(new_keys, final_results_filename, report_filename)
-    except Exception as e:
-        logger.error(f"An error occurred during scraping: {e}")
-
-def check_for_new_jobs(job_keys: set, old_job_keys_file: str, new_job_keys_file: str):
     new_job_keys = set()
     old_job_keys = set()
 
-    if os.path.exists(old_job_keys_file):
-        with open(old_job_keys_file, "r") as file:
+    if os.path.exists(old_jobkeys_filename):
+        with open(old_jobkeys_filename, "r") as file:
             old_job_keys = set(json.load(file))
 
     new_job_keys = job_keys - old_job_keys
     old_job_keys.update(new_job_keys)
 
-    with open(old_job_keys_file, "w") as file:
+    with open(old_jobkeys_filename, "w") as file:
         json.dump(list(old_job_keys), file)
 
-    with open(new_job_keys_file, "w") as file:
+    with open(new_jobkeys_filename, "w") as file:
         json.dump(list(new_job_keys), file)
 
     return new_job_keys
 
-def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
+# def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
+def create_report(new_keys: Set[str], config: ScrappingJobConfig):    
+    report_filename = f"{config.directory}/{config.query}_{config.location}_report.json"
+    full_scrap_filename = f"{config.directory}/{config.query}_{config.location}_final_results.json"
     report = []
     job_characteristics = OrderedSet([
         "applyCount",
@@ -171,16 +194,16 @@ def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str
         "urgentlyHiring"
     ])
 
-    with open(full_scrap_file, "r") as file:
+    with open(full_scrap_filename, "r") as file:
         full_scrap = json.load(file)
 
     for job_key, job_description in full_scrap.items():
-        if job_key in new_job_keys:
+        if job_key in new_keys:
             job_report = {}
             for key in job_characteristics:
                 if key in job_description:
                     job_report[key] = job_description.get(key, "Not provided")
             report.append(job_report)
     
-    with open(report_directory, "w") as file:
+    with open(report_filename, "w") as file:
         json.dump(report, file)
