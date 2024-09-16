@@ -100,6 +100,10 @@ def set_jobs_as_viewed(location, job_type):
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 1)
 
+def set_jobs_as_not_viewed(location, job_type):
+    state_type = "jobs_viewed"
+    set_state(state_type, job_type, location, 0)
+
 def check_if_jobs_viewed(location, job_type):
     return bool(get_state("jobs_viewed", job_type, location))
 
