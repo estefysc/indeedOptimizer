@@ -107,9 +107,11 @@ def set_jobs_as_not_viewed(location, job_type):
 def check_if_jobs_viewed(location, job_type):
     return bool(get_state("jobs_viewed", job_type, location))
 
-def should_scrape(location, job_type, interval_seconds):
+def should_scrape_by_time(location, job_type, interval_seconds):
     last_scrape = get_state("last_scrape", job_type, location)
     if not last_scrape:
         return True
+    # the number of seconds that have elapsed since the last scrape >= to the given interval
+    # the program should wait to scrape again
     return (int(time.time()) - int(last_scrape)) >= interval_seconds
 
