@@ -1,6 +1,8 @@
 import redis
 import time
+
 from logging_config import app_logger
+from colorama import Fore
 
 # Set up logging
 logger = app_logger.getChild('redis')
@@ -9,9 +11,9 @@ logger = app_logger.getChild('redis')
 try:
     r = redis.Redis(host='localhost', port=6379, db=0)
     r.ping()  # Test the connection
-    logger.info("Successfully connected to Redis")
+    logger.info(Fore.YELLOW + "Successfully connected to Redis")
 except redis.ConnectionError as e:
-    logger.error(f"Failed to connect to Redis: {e}")
+    logger.error(Fore.RED + f"Failed to connect to Redis: {e}")
     r = None
 
 def set_state(state_type, job_type, location, value):
@@ -38,15 +40,15 @@ def set_state(state_type, job_type, location, value):
         but it's important to be aware of it when retrieving and decoding data.
     """
     if r is None:
-        logger.error("Redis connection not available")
+        logger.error(Fore.RED + "Redis connection not available")
         raise redis.ConnectionError("Redis connection not available")
 
     key = f"{state_type}_{job_type}_{location}"
     try:
         r.set(key, value)
-        logger.info(f"Successfully set state for {key}")
+        logger.info(Fore.YELLOW + f"Successfully set state for {key}")
     except redis.RedisError as e:
-        logger.error(f"Failed to set state for {key}: {e}")
+        logger.error(Fore.RED + f"Failed to set state for {key}: {e}")
         raise
 
 def get_state(state_type, job_type, location):
@@ -78,33 +80,33 @@ def get_state(state_type, job_type, location):
         doesn't exist in Redis (which returns None).
     """
     if r is None:
-        logger.error("Redis connection not available")
+        logger.error(Fore.RED + "Redis connection not available")
         raise redis.ConnectionError("Redis connection not available")
 
     key = f"{state_type}_{job_type}_{location}"
     try:
         value = r.get(key)
-        logger.info(f"Successfully retrieved state for {key}")
+        logger.info(Fore.YELLOW + f"Successfully retrieved state for {key}")
         return value.decode('utf-8') if value else None
     except redis.RedisError as e:
-        logger.error(f"Failed to get state for {key}: {e}")
+        logger.error(Fore.RED + f"Failed to get state for {key}: {e}")
         raise
 
-def set_last_scrape(location, job_type):
+def set_last_scrape(job_type, location):
     value = int(time.time())
     state_type = "last_scrape"
     set_state(state_type, job_type, location, value)
 
 # This will have to be called by the window?
-def set_jobs_as_viewed(location, job_type):
+def set_jobs_as_viewed(job_type, location):
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 1)
 
-def set_jobs_as_not_viewed(location, job_type):
+def set_jobs_as_not_viewed(job_type, location):
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 0)
 
-def should_scrape_by_jobs_state(location, job_type):
+def should_scrape_by_jobs_state(job_type, location):
     state = get_state("jobs_viewed", job_type, location)
     # None = no scrap history
     # 1 = jobs viewed
@@ -112,7 +114,8 @@ def should_scrape_by_jobs_state(location, job_type):
     # Return True if state is None or 1, False otherwise
     return state is None or state == '1'
 
-def should_scrape_by_time(location, job_type, interval_seconds):
+# interval seconds represent the amount of time a specific scrap should wait until it runs again
+def should_scrape_by_time(job_type, location, interval_seconds):
     last_scrape = get_state("last_scrape", job_type, location)
     if not last_scrape:
         return True
