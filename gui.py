@@ -10,7 +10,7 @@ from redis_utils import set_jobs_as_viewed, should_scrape_by_time
 logger = app_logger.getChild('gui')
 
 # Create a thread pool for processing GUI updates
-alert_executor = ThreadPoolExecutor(max_workers=3)
+alert_executor = ThreadPoolExecutor(max_workers=13)
 gui_queue = Queue()
 gui_thread_instance = None
 open_alerts = {}
