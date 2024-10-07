@@ -47,6 +47,7 @@ async def run_schedule(scrape_tasks, run_every_minutes, scraps_staggering_minute
         stop_gui_thread()
 
 def start_scheduler(scrape_tasks, run_every_minutes, scraps_staggering_minutes):
+    # To run a coroutine. Runs the top level entry point
     asyncio.run(run_schedule(scrape_tasks, run_every_minutes, scraps_staggering_minutes))
 
 def run_one_time_scrape(query, location):
