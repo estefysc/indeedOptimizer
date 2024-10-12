@@ -17,7 +17,7 @@ The Indeed Search Optimizer is a Python-based tool designed to automate job sear
 ## Installation Instructions
 
 ### Prerequisites
-- Windows Subsystem for Linux 2 (WSL 2) - Ubuntu 
+- Windows Subsystem for Linux 2 (WSL 2) Ubuntu with WSLg - check the [official WSLg GitHub repository](https://github.com/microsoft/wslg) 
 - Python 3.7 or later
 - Scrapfly API key
 - Redis
