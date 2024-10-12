@@ -1,16 +1,10 @@
 from scheduler import start_scheduler, run_one_time_scrape
 
 if __name__ == "__main__":
-    # errors = red
-    # gui = blue
-    # scheduler = green
-    # redis = yellow    
-    # scrape = magenta
+
     tasks = [
-        ("software_developer", "sarasota"),
-        ("software_engineer", "sarasota"),
-        ("software_developer", "tampa"),
-        ("software_engineer", "tampa")
+        ("job_title", "location"),
+        ("job_title_2", "location_2"),
     ]
     run_every_minutes = 3
     staggering_minutes = 5
