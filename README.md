@@ -105,7 +105,7 @@ The Indeed Search Optimizer is a Python-based tool designed to automate job sear
 - Logs are stored in the `logs` directory.
 
 ## Data Structure
-The JSON data you scrape from Indeed contains a wealth of information about each job posting. Notably, the applyCount is a piece of information not available directly on the website. This data point can help you be more strategic when applying for jobs. Below is an explanation of some of the more notable keys you might find useful:
+The JSON data you scrape from Indeed contains a wealth of information about each job posting. Notably, the organicApplyStartCount is a piece of information not available directly on the website. This data point can help you be more strategic when applying for jobs. Below is an explanation of some of the more notable keys you might find useful:
 
 - **adBlob**: A string likely containing encrypted or encoded data for internal tracking or state management.
 - **adId**: A unique identifier for the advertisement itself.
@@ -123,6 +123,7 @@ The JSON data you scrape from Indeed contains a wealth of information about each
 - **jobCardRequirementsModel**: Details specific requirements for the job, such as necessary skills or experience.
 - **jobLocationCity**, **jobLocationState**, **jobLocationPostal**: Specific location details of the job.
 - **link**: A URL to the specific job posting on Indeed.
+- **organicApplyStartCount**: The number of organic (non-sponsored) applications started for this job.
 - **remoteWorkModel**: Details about the remote work options available for the job, such as hybrid work.
 - **snippet**: A brief HTML snippet describing the job, often containing key points or requirements.
 - **title**: The official title of the job posting.
