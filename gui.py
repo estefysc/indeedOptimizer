@@ -10,10 +10,16 @@ from redis_utils import set_jobs_as_viewed, should_scrape_by_time
 logger = app_logger.getChild('gui')
 
 # Create a thread pool for processing GUI updates
-alert_executor = ThreadPoolExecutor(max_workers=13)
+# alert_executor = ThreadPoolExecutor(max_workers=13)
+alert_executor = None
 gui_queue = Queue()
 gui_thread_instance = None
 open_alerts = {}
+
+def initialize_alert_executor(max_workers):
+    print(f"Max Workers will be {max_workers}")
+    global alert_executor
+    alert_executor = ThreadPoolExecutor(max_workers=max_workers)
 
 def gui_thread(queue):
     while True:
@@ -25,8 +31,9 @@ def gui_thread(queue):
             open_alerts[(query, location)] = True
             alert_executor.submit(show_new_jobs_alert, title, body, query, location, scraps_staggering_minutes)
 
-def start_gui_thread():
+def start_gui_thread(max_workers):
     global gui_thread_instance
+    initialize_alert_executor(max_workers)
     gui_thread_instance = Thread(target=gui_thread, args=(gui_queue,))
     gui_thread_instance.start()
 

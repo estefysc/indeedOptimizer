@@ -8,6 +8,7 @@ if __name__ == "__main__":
     ]
     run_every_minutes = 3
     staggering_minutes = 5
+    workers = len(tasks)
 
-    start_scheduler(tasks, run_every_minutes, staggering_minutes)
+    start_scheduler(tasks, run_every_minutes, staggering_minutes, workers)
     # run_one_time_scrape("software_development", "tampa")
