@@ -3,9 +3,10 @@ import json
 import re
 import time
 import logging
+
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, List, Set
-
 from urllib.parse import urlencode
 from scrapfly import ScrapflyClient, ScrapeConfig
 from ordered_set import OrderedSet
@@ -169,6 +170,13 @@ def check_for_new_jobs(job_keys: Set[str], config: ScrappingJobConfig) -> Set[st
 
     return new_job_keys
 
+def formatCreateDate(create_date: str) -> str:
+    formatted_date = int(create_date) / 1000
+    date = datetime.fromtimestamp(formatted_date)
+    formatted_date = date.strftime('%Y-%m-%d %H:%M:%S %Z')
+
+    return formatted_date
+
 # def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
 def create_report(new_keys: Set[str], config: ScrappingJobConfig):    
     report_filename = f"{config.directory}/{config.query}_{config.location}_report.json"
@@ -206,7 +214,12 @@ def create_report(new_keys: Set[str], config: ScrappingJobConfig):
             job_report = {}
             for key in job_characteristics:
                 if key in job_description:
-                    job_report[key] = job_description.get(key, "Not provided")
+                    job_report[key] = job_description[key]
+                    if key == "createDate":
+                        formattedCreateDate = formatCreateDate(job_description[key])
+                        job_report["formattedCreateDate"] = formattedCreateDate
+                else:
+                    job_report[key] = "Not provided"
             report.append(job_report)
     
     with open(report_filename, "w") as file:
