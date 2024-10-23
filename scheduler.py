@@ -36,9 +36,6 @@ async def run_schedule(scrape_tasks, run_every_minutes, scraps_staggering_minute
     try:
         while True:
             for query, location in scrape_tasks:
-                # await linkedin_scrape_search(query, location)
-                # linkedin_login()
-                # exit()
                 should_scrape_state = should_scrape_by_jobs_state(query, location)
                 should_scrape_time = should_scrape_by_time(query, location, run_every_seconds)
                 logger.info(Fore.YELLOW + f"Should scrape state: {should_scrape_state}, Should scrape time: {should_scrape_time}")
