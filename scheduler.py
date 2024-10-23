@@ -7,7 +7,7 @@ from scrapper import scrape_search
 from gui import gui_queue, start_gui_thread, stop_gui_thread
 from redis_utils import set_last_scrape, set_jobs_as_not_viewed, should_scrape_by_jobs_state, should_scrape_by_time
 
-from linkedin_scraper import linkedin_scrape_search
+from linkedin_scraper import linkedin_scrape_search, linkedin_login
 
 logger = app_logger.getChild('scheduler')
 
@@ -37,6 +37,7 @@ async def run_schedule(scrape_tasks, run_every_minutes, scraps_staggering_minute
         while True:
             for query, location in scrape_tasks:
                 # await linkedin_scrape_search(query, location)
+                # linkedin_login()
                 # exit()
                 should_scrape_state = should_scrape_by_jobs_state(query, location)
                 should_scrape_time = should_scrape_by_time(query, location, run_every_seconds)
