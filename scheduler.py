@@ -7,7 +7,7 @@ from scrapper import scrape_search
 from gui import gui_queue, start_gui_thread, stop_gui_thread
 from redis_utils import set_last_scrape, set_jobs_as_not_viewed, should_scrape_by_jobs_state, should_scrape_by_time
 
-from linkedin_scraper import linkedin_scrape_search, linkedin_login
+# from linkedin_scraper import linkedin_scrape_search, linkedin_login
 
 logger = app_logger.getChild('scheduler')
 

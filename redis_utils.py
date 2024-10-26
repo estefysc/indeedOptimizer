@@ -9,7 +9,7 @@ logger = app_logger.getChild('redis')
 
 # Connect to Redis
 try:
-    r = redis.Redis(host='localhost', port=6379, db=0)
+    r = redis.Redis(host='redis', port=6379, db=0)
     r.ping()  # Test the connection
     logger.info(Fore.YELLOW + "Successfully connected to Redis")
 except redis.ConnectionError as e:
