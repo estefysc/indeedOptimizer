@@ -22,7 +22,7 @@ The Indeed Search Optimizer is a Python-based tool designed to automate job sear
 - Scrapfly API key
 - Redis
 
-### Installation Steps
+### Installation Steps (Without Docker)
 1. **Access WSL**:    
    Open your WSL terminal.
 
@@ -45,6 +45,26 @@ The Indeed Search Optimizer is a Python-based tool designed to automate job sear
 
 6. **Ensure Redis is Running**:
     Make sure Redis is installed and running on your system.
+
+### Installation Steps (With Docker)
+
+This assumes that docker is installed and running 
+
+1. **Open terminal**:    
+   Open your WSL, Linux, or OSX terminal.
+
+2. **Clone the Repository**:  
+   Clone the repo and cd the root folder:   
+   `cd indeedOptimizer`
+
+3. **Set Up Environment Variables**:  
+    Create a .env file in the root directory of the project and add your Scrapfly API key:  
+    `API_KEY=your_scrapfly_api_key`
+
+4. **Run docker compose**:  
+    `docker compose up`  
+
+
 
 ## Usage
 ### How to Use the Project

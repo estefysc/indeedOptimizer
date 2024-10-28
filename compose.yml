@@ -1,0 +1,15 @@
+services:
+  scraper:
+    build: .
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    environment:
+      - DISPLAY
+    env_file: ".env"
+    links: 
+      - redis
+  redis:
+    image: "redis:alpine"
+    expose:
+      - 6379
+    
