@@ -9,7 +9,7 @@ services:
     links: 
       - redis
   redis:
-    image: "redis:alpine"
+    image: "redis/redis-stack"
     expose:
       - 6379
     
