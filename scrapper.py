@@ -190,7 +190,9 @@ def create_report(new_keys: Set[str], config: ScrappingJobConfig):
         "createDate",
         "displayTitle",
         "estimatedSalary",
+        "extractedSalary",
         "expired",
+        "employerResponsive",
         "formattedLocation",
         "formattedRelativeTime",
         "hiringMultipleCandidatesModel",
@@ -199,10 +201,12 @@ def create_report(new_keys: Set[str], config: ScrappingJobConfig):
         "link",
         "newJob",
         "organicApplyStartCount",
+        "pubDate",
         "remoteLocation",
         "remoteWorkModel",
         "taxonomyAttributes",
         "title",
+        "salarySnippet",
         "urgentlyHiring"
     ])
 
@@ -218,6 +222,9 @@ def create_report(new_keys: Set[str], config: ScrappingJobConfig):
                     if key == "createDate":
                         formattedCreateDate = formatCreateDate(job_description[key])
                         job_report["formattedCreateDate"] = formattedCreateDate
+                    if key == "pubDate":
+                        formattedCreateDate = formatCreateDate(job_description[key])
+                        job_report["formattedPubDate"] = formattedCreateDate
                 else:
                     job_report[key] = "Not provided"
             report.append(job_report)
