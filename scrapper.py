@@ -58,7 +58,7 @@ async def scrape_search(query: str, location: str, radius: int, max_results: int
         new_keys = check_for_new_jobs(job_keys, config)
         logger.info(f"New Jobs: {len(new_keys)}")
 
-        create_report(new_keys, config)
+        await create_report(new_keys, config)
 
         new_jobs_found = len(new_keys) > 0
         return new_jobs_found
@@ -147,7 +147,6 @@ def parse_search_page(html: str):
         "meta": data["metaData"]["mosaicProviderJobCardsModel"]["tierSummaries"],
     }
 
-# def check_for_new_jobs(job_keys: set, old_job_keys_file: str, new_job_keys_file: str):
 def check_for_new_jobs(job_keys: Set[str], config: ScrappingJobConfig) -> Set[str]:
     old_jobkeys_filename = f"{config.directory}/{config.location}_jobkeys_old.json"
     new_jobkeys_filename = f"{config.directory}/{config.query}_{config.location}_new_keys.json"
@@ -177,8 +176,7 @@ def formatCreateDate(create_date: str) -> str:
 
     return formatted_date
 
-# def create_report(new_job_keys: set, full_scrap_file: str, report_directory: str):
-def create_report(new_keys: Set[str], config: ScrappingJobConfig):    
+async def create_report(new_keys: Set[str], config: ScrappingJobConfig):    
     report_filename = f"{config.directory}/{config.query}_{config.location}_report.json"
     full_scrap_filename = f"{config.directory}/{config.query}_{config.location}_final_results.json"
     report = []
@@ -213,12 +211,16 @@ def create_report(new_keys: Set[str], config: ScrappingJobConfig):
     with open(full_scrap_filename, "r") as file:
         full_scrap = json.load(file)
 
+    # TODO: Can this be refactored?
     for job_key, job_description in full_scrap.items():
         if job_key in new_keys:
             job_report = {}
             for key in job_characteristics:
                 if key in job_description:
                     job_report[key] = job_description[key]
+                    if key == "link":
+                        description = await scrap_description_link(job_description[key])
+                        job_report["jobDescription"] = description
                     if key == "createDate":
                         formattedCreateDate = formatCreateDate(job_description[key])
                         job_report["formattedCreateDate"] = formattedCreateDate
@@ -231,3 +233,16 @@ def create_report(new_keys: Set[str], config: ScrappingJobConfig):
     
     with open(report_filename, "w") as file:
         json.dump(report, file)
+
+async def scrap_description_link(link: str) -> str:
+    url = "https://www.indeed.com" + link
+    result = await scrapfly.async_scrape(ScrapeConfig(url, asp=True))
+    target_div = result.selector.css('div#jobDescriptionText')
+
+    if target_div:
+        job_description = target_div.css('*::text').getall()
+        job_description = ' '.join(job_description).replace("\n", "").replace("\u2019", "'").strip()
+        return job_description
+    else:
+        logger.warning(f"Div not found for link: {link}")
+        return "Job description not available."
