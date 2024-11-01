@@ -1,8 +1,10 @@
 import redis
 import time
+import json
 
 from logging_config import app_logger
 from colorama import Fore
+from datetime import datetime
 
 # Set up logging
 logger = app_logger.getChild('redis')
@@ -123,3 +125,16 @@ def should_scrape_by_time(job_type, location, interval_seconds):
     # the program should wait to scrape again
     return (int(time.time()) - int(last_scrape)) >= interval_seconds
 
+def save_job_to_redis(job_id, job_report):
+    # Serialize the job description to a JSON string
+    job_description = json.dumps(job_report)
+    # Get current time and format it as a string
+    timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+    key = f"{job_id}_{timestamp}"
+
+    try:
+        response = r.json().set(key, "$", job_description)
+        logger.info(Fore.YELLOW + f"Saved to JSON response: {response}")
+    except redis.RedisError as e:
+        logger.error(Fore.RED + f"Failed to save to JSON for {key}: {job_description}")
+        raise
