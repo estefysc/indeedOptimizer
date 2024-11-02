@@ -11,7 +11,7 @@ logger = app_logger.getChild('redis')
 
 # Connect to Redis
 try:
-    r = redis.Redis(host='redis', port=6379, db=0)
+    r = redis.Redis(host='localhost', port=6379, db=0)
     r.ping()  # Test the connection
     logger.info(Fore.YELLOW + "Successfully connected to Redis")
 except redis.ConnectionError as e:
@@ -125,16 +125,29 @@ def should_scrape_by_time(job_type, location, interval_seconds):
     # the program should wait to scrape again
     return (int(time.time()) - int(last_scrape)) >= interval_seconds
 
-def save_job_to_redis(job_id, job_report):
+def save_job_to_redis(job_id: str, job_report: dict) -> None:
+    """
+    Save a job description to Redis as a JSON string.
+
+    Args:
+        job_id (str): The unique identifier for the job.
+        job_report (dict): The job report data to be saved.
+
+    Raises:
+        redis.RedisError: If there is an error saving to Redis.
+    """
     # Serialize the job description to a JSON string
     job_description = json.dumps(job_report)
+
     # Get current time and format it as a string
     timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+
     key = f"{job_id}_{timestamp}"
 
     try:
+        # Use the Redis JSON set method to save the job description
         response = r.json().set(key, "$", job_description)
-        logger.info(Fore.YELLOW + f"Saved to JSON response: {response}")
+        logger.info(Fore.YELLOW + f"Successfully saved job '{job_id}' at '{timestamp}' with response: {response}")
     except redis.RedisError as e:
-        logger.error(Fore.RED + f"Failed to save to JSON for {key}: {job_description}")
+        logger.error(Fore.RED + f"Failed to save job '{job_id}' at '{timestamp}' in function 'save_job_to_redis'. Error: {e}. Job description: {job_description}")
         raise

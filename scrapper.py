@@ -241,13 +241,19 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
 
 async def scrap_description_link(link: str) -> str:
     url = "https://www.indeed.com" + link
-    result = await scrapfly.async_scrape(ScrapeConfig(url, asp=True))
-    target_div = result.selector.css('div#jobDescriptionText')
+    try:
+        result = await scrapfly.async_scrape(ScrapeConfig(url, asp=True))
+        target_div = result.selector.css('div#jobDescriptionText')
+        
+        if target_div:
+            description_parts = target_div.css('*::text').getall()
+            return clean_job_description(description_parts)
+        else:
+            logger.warning(f"Div not found for link: {link}")
+            return "Job description not available."
+    except Exception as e:
+        logger.error(f"Error in scrap_description_link (scrapper.py) for link '{link}': {e}")
+        return "Error retrieving job description."
 
-    if target_div:
-        job_description = target_div.css('*::text').getall()
-        job_description = ' '.join(job_description).replace("\n", "").replace("\u2019", "'").strip()
-        return job_description
-    else:
-        logger.warning(f"Div not found for link: {link}")
-        return "Job description not available."
+def clean_job_description(description_parts: List[str]) -> str:
+    return ' '.join(description_parts).replace("\n", "").replace("\u2019", "'").strip()
