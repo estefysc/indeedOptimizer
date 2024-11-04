@@ -1,22 +1,60 @@
 import redis
 import time
 import json
+import os
 
 from logging_config import app_logger
 from colorama import Fore
 from datetime import datetime
+from docker_utils import DockerEnvironment
 
 # Set up logging
 logger = app_logger.getChild('redis')
 
-# Connect to Redis
-try:
-    r = redis.Redis(host='redis', port=6379, db=0)
-    r.ping()  # Test the connection
-    logger.info(Fore.YELLOW + "Successfully connected to Redis")
-except redis.ConnectionError as e:
-    logger.error(Fore.RED + f"Failed to connect to Redis: {e}")
-    r = None
+class RedisConnection:
+    """
+    A singleton class that manages the Redis connection.
+    
+    This class implements a lazy loading pattern for Redis connection,
+    creating the connection only when first needed and reusing it afterwards.
+    """
+    def __init__(self):
+        """Initialize RedisConnection with no active connection."""
+        self._redis_client = None
+    
+    def get_connection(self) -> redis.Redis:
+        """
+        Get or create a Redis connection.
+
+        Returns:
+            redis.Redis: An active Redis connection instance.
+
+        Raises:
+            redis.ConnectionError: If unable to establish connection to Redis.
+
+        Note:
+            - Uses 'redis' as host when running in Docker, 'localhost' otherwise
+            - Connection is created only once and reused for subsequent calls
+            - Performs a ping test to verify connection is working
+        """
+        if self._redis_client is None:
+            try:
+                host = 'redis' if DockerEnvironment.is_running_in_docker() else 'localhost'
+                self._redis_client = redis.Redis(host=host, port=6379, db=0)
+                # Test the connection. If connection fails, error will happen here.
+                self._redis_client.ping()  
+
+                if host == 'redis':
+                    logger.info(Fore.YELLOW + "Successfully connected to Redis Stack")
+                else:
+                    logger.info(Fore.YELLOW + "Successfully connected to Redis (local)")
+            except redis.ConnectionError as e:
+                logger.error(Fore.RED + f"Failed to connect to Redis: {e}")
+                raise
+        return self._redis_client
+    
+# Create a singleton instance
+redis_connection = RedisConnection()
 
 def set_state(state_type: str, job_type: str, location: str, value: int) -> None:
     """
@@ -41,6 +79,7 @@ def set_state(state_type: str, job_type: str, location: str, value: int) -> None
         This automatic encoding simplifies the process of storing data in Redis,
         but it's important to be aware of it when retrieving and decoding data.
     """
+    r = redis_connection.get_connection()
     if r is None:
         logger.error(Fore.RED + "Redis connection not available")
         raise redis.ConnectionError("Redis connection not available")
@@ -81,6 +120,7 @@ def get_state(state_type: str, job_type: str, location: str) -> str:
         easier to work with in Python code. It also handles cases where the key 
         doesn't exist in Redis (which returns None).
     """
+    r = redis_connection.get_connection()
     if r is None:
         logger.error(Fore.RED + "Redis connection not available")
         raise redis.ConnectionError("Redis connection not available")
@@ -186,6 +226,7 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
     key = f"{job_id}_{timestamp}"
 
     try:
+        r = redis_connection.get_connection()
         # Use the Redis JSON set method to save the job description
         response = r.json().set(key, "$", job_description)
         logger.info(Fore.YELLOW + f"Successfully saved job '{job_id}' at '{timestamp}' with response: {response}")
