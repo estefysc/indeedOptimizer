@@ -13,6 +13,7 @@ from ordered_set import OrderedSet
 from dotenv import load_dotenv
 from logging_config import app_logger
 from redis_utils import save_job_to_redis
+from docker_utils import DockerEnvironment
 
 @dataclass
 class ScrappingJobConfig:
@@ -231,8 +232,8 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
                 else:
                     job_report[key] = "Not provided"
 
-            # store the job report in redis this
-            save_job_to_redis(job_key, job_report)
+            if DockerEnvironment.is_running_in_docker():
+                save_job_to_redis(job_key, job_report)
 
             report.append(job_report)
     
