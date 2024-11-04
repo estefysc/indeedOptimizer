@@ -11,14 +11,14 @@ logger = app_logger.getChild('redis')
 
 # Connect to Redis
 try:
-    r = redis.Redis(host='localhost', port=6379, db=0)
+    r = redis.Redis(host='redis', port=6379, db=0)
     r.ping()  # Test the connection
     logger.info(Fore.YELLOW + "Successfully connected to Redis")
 except redis.ConnectionError as e:
     logger.error(Fore.RED + f"Failed to connect to Redis: {e}")
     r = None
 
-def set_state(state_type, job_type, location, value):
+def set_state(state_type: str, job_type: str, location: str, value: int) -> None:
     """
     Set a key-value pair in Redis.
 
@@ -26,7 +26,7 @@ def set_state(state_type, job_type, location, value):
         state_type (str): The type of state being set.
         job_type (str): The type of job.
         location (str): The location for the job.
-        value: The value to store.
+        value (int): The value to store.
 
     Raises:
         redis.ConnectionError: If unable to connect to Redis.
@@ -53,7 +53,7 @@ def set_state(state_type, job_type, location, value):
         logger.error(Fore.RED + f"Failed to set state for {key}: {e}")
         raise
 
-def get_state(state_type, job_type, location):
+def get_state(state_type: str, job_type: str, location: str) -> str:
     """
     Retrieve a value from Redis and decode it to a UTF-8 string.
 
@@ -94,21 +94,51 @@ def get_state(state_type, job_type, location):
         logger.error(Fore.RED + f"Failed to get state for {key}: {e}")
         raise
 
-def set_last_scrape(job_type, location):
+def set_last_scrape(job_type: str, location: str) -> None:
+    """
+    Set the last scrape time for a specific job and location.
+
+    Args:
+        job_type (str): The type of job.
+        location (str): The location for the job.
+    """
     value = int(time.time())
     state_type = "last_scrape"
     set_state(state_type, job_type, location, value)
 
-# This will have to be called by the window?
-def set_jobs_as_viewed(job_type, location):
+def set_jobs_as_viewed(job_type: str, location: str) -> None:
+    """
+    Mark jobs as viewed for a specific job type and location.
+
+    Args:
+        job_type (str): The type of job.
+        location (str): The location for the job.
+    """
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 1)
 
-def set_jobs_as_not_viewed(job_type, location):
+def set_jobs_as_not_viewed(job_type: str, location: str) -> None:
+    """
+    Mark jobs as not viewed for a specific job type and location.
+
+    Args:
+        job_type (str): The type of job.
+        location (str): The location for the job.
+    """
     state_type = "jobs_viewed"
     set_state(state_type, job_type, location, 0)
 
-def should_scrape_by_jobs_state(job_type, location):
+def should_scrape_by_jobs_state(job_type: str, location: str) -> bool:
+    """
+    Determine if scraping should occur based on the jobs viewed state.
+
+    Args:
+        job_type (str): The type of job.
+        location (str): The location for the job.
+
+    Returns:
+        bool: True if there is no scrap history or jobs have been viewed, False otherwise.
+    """
     state = get_state("jobs_viewed", job_type, location)
     # None = no scrap history
     # 1 = jobs viewed
@@ -117,9 +147,20 @@ def should_scrape_by_jobs_state(job_type, location):
     return state is None or state == '1'
 
 # interval seconds represent the amount of time a specific scrap should wait until it runs again
-def should_scrape_by_time(job_type, location, interval_seconds):
+def should_scrape_by_time(job_type: str, location: str, interval_seconds: int) -> bool:
+    """
+    Determine if scraping should occur based on the time since the last scrape.
+
+    Args:
+        job_type (str): The type of job.
+        location (str): The location for the job.
+        interval_seconds (int): The minimum interval in seconds between scrapes.
+
+    Returns:
+        bool: True if enough time has passed since the last scrape or if no last scrape is recorded.
+    """
     last_scrape = get_state("last_scrape", job_type, location)
-    if not last_scrape:
+    if last_scrape is None:
         return True
     # the number of seconds that have elapsed since the last scrape >= to the given interval
     # the program should wait to scrape again
