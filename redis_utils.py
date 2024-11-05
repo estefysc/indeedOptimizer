@@ -223,7 +223,7 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
     # Get current time and format it as a string
     timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 
-    key = f"{job_id}_{timestamp}"
+    key = f"job:{job_id}_{timestamp}"
 
     try:
         r = redis_connection.get_connection()
