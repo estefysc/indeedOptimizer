@@ -3,6 +3,20 @@ import time
 import json
 import os
 
+import numpy as np
+import pandas as pd
+import requests
+
+from redis.commands.search.field import (
+    NumericField,
+    TagField,
+    TextField,
+    VectorField,
+)
+from redis.commands.search.indexDefinition import IndexDefinition, IndexType
+from redis.commands.search.query import Query
+from sentence_transformers import SentenceTransformer
+
 from logging_config import app_logger
 from colorama import Fore
 from datetime import datetime
@@ -233,3 +247,10 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
     except redis.RedisError as e:
         logger.error(Fore.RED + f"Failed to save job '{job_id}' at '{timestamp}' in function 'save_job_to_redis'. Error: {e}. Job description: {job_description}")
         raise
+
+def create_embeddings() -> None:
+    r = redis_connection.get_connection()
+    keys = r.keys("job:*")
+    print(keys)
+    # embedder = SentenceTransformer('msmarco-distilbert-base-v4')
+    # return embedder

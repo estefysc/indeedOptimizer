@@ -12,7 +12,7 @@ from scrapfly import ScrapflyClient, ScrapeConfig
 from ordered_set import OrderedSet
 from dotenv import load_dotenv
 from logging_config import app_logger
-from redis_utils import save_job_to_redis
+from redis_utils import save_job_to_redis, create_embeddings
 from docker_utils import DockerEnvironment
 
 @dataclass
@@ -233,6 +233,8 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
                     job_report[key] = "Not provided"
 
             if DockerEnvironment.is_running_in_docker():
+                create_embeddings()
+                exit()
                 save_job_to_redis(job_key, job_report)
 
             report.append(job_report)

@@ -4,8 +4,22 @@ import os
 if __name__ == "__main__":
 
     tasks = [
-        ("job_title", "location"),
-        ("job_title_2", "location_2"),
+        ("software_developer", "sarasota"),
+        ("software_engineer", "sarasota"),
+        ("python_developer", "sarasota"),
+        ("php_developer", "sarasota"),
+        ("software_developer", "tampa"),
+        ("software_engineer", "tampa"),
+        ("python_developer", "tampa"),
+        ("php_developer", "tampa"),
+        ("software_developer", "miami"),
+        ("software_engineer", "miami"),
+        ("software", "sarasota")
+        # ("software_developer", "remote"),
+        # ("software_engineer", "remote"),
+        # ("cobol", "tampa"),
+        # ("cobol", "remote"),
+        # ("cobol", "miami")
     ]
     run_every_minutes = 3
     staggering_minutes = 5
