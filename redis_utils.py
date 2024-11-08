@@ -231,18 +231,14 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
     Raises:
         redis.RedisError: If there is an error saving to Redis.
     """
-    # Serialize the job description to a JSON string
-    # job_description = json.dumps(job_report)
 
     # Get current time and format it as a string
     timestamp = datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
-
     key = f"job:{job_id}_{timestamp}"
 
     try:
         r = redis_connection.get_connection()
         # Use the Redis JSON set method to save the job description
-        # response = r.json().set(key, "$", job_description)
         response = r.json().set(key, "$", job_report)
         logger.info(Fore.YELLOW + f"Successfully saved job '{job_id}' at '{timestamp}' with response: {response}")
     except redis.RedisError as e:
