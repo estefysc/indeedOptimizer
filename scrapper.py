@@ -233,9 +233,8 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
                     job_report[key] = "Not provided"
 
             if DockerEnvironment.is_running_in_docker():
-                create_embeddings()
-                exit()
                 save_job_to_redis(job_key, job_report)
+                create_embeddings()
 
             report.append(job_report)
     

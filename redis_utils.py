@@ -249,8 +249,15 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
         raise
 
 def create_embeddings() -> None:
+    embedder = SentenceTransformer('msmarco-distilbert-base-v4')
     r = redis_connection.get_connection()
     keys = r.keys("job:*")
-    print(keys)
-    # embedder = SentenceTransformer('msmarco-distilbert-base-v4')
-    # return embedder
+
+    job_descriptions = r.json().mget(keys, "$.jobDescription")
+    descriptions = [item for sublist in job_descriptions for item in sublist]
+    for description in descriptions:
+        print(description)
+    print(len(descriptions))
+    # print the first description
+    print(descriptions)
+    exit()
