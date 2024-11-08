@@ -12,7 +12,7 @@ from scrapfly import ScrapflyClient, ScrapeConfig
 from ordered_set import OrderedSet
 from dotenv import load_dotenv
 from logging_config import app_logger
-from redis_utils import save_job_to_redis, create_embeddings
+from redis_utils import save_job_to_redis, process_job_description_embeddings
 from docker_utils import DockerEnvironment
 
 @dataclass
@@ -234,7 +234,7 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
 
             if DockerEnvironment.is_running_in_docker():
                 save_job_to_redis(job_key, job_report)
-                create_embeddings()
+                process_job_description_embeddings()
 
             report.append(job_report)
     

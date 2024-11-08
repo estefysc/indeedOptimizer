@@ -245,16 +245,48 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
         logger.error(Fore.RED + f"Failed to save job '{job_id}' at '{timestamp}' in function 'save_job_to_redis'. Error: {e}. Job description: {job_description}")
         raise
 
-def create_embeddings() -> None:
-    embedder = SentenceTransformer('msmarco-distilbert-base-v4')
+def get_job_descriptions() -> tuple[list[str], list[str]]:
+    """
+    Retrieve all job descriptions from Redis.
+
+    Returns:
+        tuple[list[str], list[str]]: A tuple containing (redis_keys, descriptions)
+    """
     r = redis_connection.get_connection()
     keys = r.keys("job:*")
-
     job_descriptions = r.json().mget(keys, "$.jobDescription")
     descriptions = [item for sublist in job_descriptions for item in sublist]
-    for description in descriptions:
-        print(description)
-    print(len(descriptions))
-    # print the first description
-    print(descriptions)
-    exit()
+    return keys, descriptions
+
+def generate_embeddings(descriptions: list[str]) -> list[list[float]]:
+    """
+    Generate embeddings for a list of job descriptions.
+
+    Args:
+        descriptions (list[str]): List of job descriptions to embed
+
+    Returns:
+        list[list[float]]: List of embedding vectors
+    """
+    embedder = SentenceTransformer('msmarco-distilbert-base-v4')
+    return embedder.encode(descriptions).astype(np.float32).tolist()
+
+def store_embeddings(keys: list[str], embeddings: list[list[float]]) -> None:
+    """
+    Store job description embeddings back into the job objects in Redis.
+
+    Args:
+        keys (list[str]): Redis keys for the job descriptions
+        embeddings (list[list[float]]): List of embedding vectors to store
+    """
+    r = redis_connection.get_connection()
+    for key, embedding in zip(keys, embeddings):
+        r.json().set(key, "$.description_embedding", embedding)
+
+def process_job_description_embeddings() -> None:
+    """
+    Orchestrate the process of creating and storing embeddings for all job descriptions.
+    """
+    keys, descriptions = get_job_descriptions()
+    embeddings = generate_embeddings(descriptions)
+    store_embeddings(keys, embeddings)
