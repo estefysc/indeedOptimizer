@@ -242,7 +242,7 @@ def save_job_to_redis(job_id: str, job_report: dict) -> None:
         response = r.json().set(key, "$", job_report)
         logger.info(Fore.YELLOW + f"Successfully saved job '{job_id}' at '{timestamp}' with response: {response}")
     except redis.RedisError as e:
-        logger.error(Fore.RED + f"Failed to save job '{job_id}' at '{timestamp}' in function 'save_job_to_redis'. Error: {e}. Job description: {job_description}")
+        logger.error(Fore.RED + f"Failed to save job '{job_id}' at '{timestamp}' in function 'save_job_to_redis'. Error: {e}. Job report: {job_report}")
         raise
 
 def get_job_descriptions() -> tuple[list[str], list[str]]:
