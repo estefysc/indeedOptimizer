@@ -112,9 +112,11 @@ def save_results(results: Dict, config: ScrappingJobConfig):
 def make_request_url(query, location, radius=None, from_param=None, offset=None):
     # The first request to the Indeed search page only requires the query, location, and from parameter
 
+    # sort=date appears in the url when the search is sorted by date. Testing with this parameter
     # Base parameters
-    parameters = {"q": query, "l": location}
-    
+    parameters = {"q": query, "l": location, "sort": "date"}
+    # parameters = {"q": query, "l": location}
+
     # Add either `from` (for the first request) or `radius` and `start` (for paginated requests)
     if from_param is not None:
         parameters["from"] = from_param
@@ -220,9 +222,9 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
             for key in job_characteristics:
                 if key in job_description:
                     job_report[key] = job_description[key]
-                    if key == "link":
-                        description = await scrap_description_link(job_description[key])
-                        job_report["jobDescription"] = description
+                    # if key == "link":
+                    #     description = await scrap_description_link(job_description[key])
+                    #     job_report["jobDescription"] = description
                     if key == "createDate":
                         formattedCreateDate = formatCreateDate(job_description[key])
                         job_report["formattedCreateDate"] = formattedCreateDate
@@ -232,8 +234,8 @@ async def create_report(new_keys: Set[str], config: ScrappingJobConfig):
                 else:
                     job_report[key] = "Not provided"
 
-            if DockerEnvironment.is_running_in_docker():
-                save_job_to_redis(job_key, job_report)
+            # if DockerEnvironment.is_running_in_docker():
+            #     save_job_to_redis(job_key, job_report)
 
             report.append(job_report)
     

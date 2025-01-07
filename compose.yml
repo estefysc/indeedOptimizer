@@ -2,7 +2,11 @@ services:
   scraper:
     build: .
     volumes:
+      # used for X11 forwarding, which allows GUI applications running inside the Docker container 
+      # to display their windows on the host machine's display
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./scrapped_data:/tmp/indeed/scrapped_data:rw
+      - ./logs:/tmp/indeed/logs:rw
     environment:
       - DISPLAY
     env_file: ".env"
